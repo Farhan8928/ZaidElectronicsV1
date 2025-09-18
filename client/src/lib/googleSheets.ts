@@ -4,14 +4,20 @@ const GOOGLE_SHEETS_API_URL = import.meta.env.VITE_GOOGLE_SHEETS_API_URL || impo
 
 export class GoogleSheetsService {
   private apiUrl: string;
+  private useLocalStorage: boolean;
 
   constructor() {
     this.apiUrl = GOOGLE_SHEETS_API_URL;
+    this.useLocalStorage = !this.apiUrl;
+    
+    if (this.useLocalStorage) {
+      console.warn("Google Sheets API URL not configured. Using localStorage for development.");
+    }
   }
 
   async addJob(job: GoogleSheetsJob): Promise<void> {
-    if (!this.apiUrl) {
-      throw new Error("Google Sheets API URL not configured");
+    if (this.useLocalStorage) {
+      return this.addJobToLocalStorage(job);
     }
 
     try {
@@ -41,8 +47,8 @@ export class GoogleSheetsService {
   }
 
   async getAllJobs(): Promise<GoogleSheetsJob[]> {
-    if (!this.apiUrl) {
-      throw new Error("Google Sheets API URL not configured");
+    if (this.useLocalStorage) {
+      return this.getAllJobsFromLocalStorage();
     }
 
     try {
@@ -65,8 +71,8 @@ export class GoogleSheetsService {
   }
 
   async updateJob(id: string, job: Partial<GoogleSheetsJob>): Promise<void> {
-    if (!this.apiUrl) {
-      throw new Error("Google Sheets API URL not configured");
+    if (this.useLocalStorage) {
+      return this.updateJobInLocalStorage(id, job);
     }
 
     try {
@@ -97,8 +103,8 @@ export class GoogleSheetsService {
   }
 
   async deleteJob(id: string): Promise<void> {
-    if (!this.apiUrl) {
-      throw new Error("Google Sheets API URL not configured");
+    if (this.useLocalStorage) {
+      return this.deleteJobFromLocalStorage(id);
     }
 
     try {
@@ -144,8 +150,8 @@ export class GoogleSheetsService {
   }
 
   async exportToCSV(): Promise<string> {
-    if (!this.apiUrl) {
-      throw new Error("Google Sheets API URL not configured");
+    if (this.useLocalStorage) {
+      return this.exportLocalStorageToCSV();
     }
 
     try {
@@ -161,6 +167,95 @@ export class GoogleSheetsService {
       console.error('Error exporting CSV from Google Sheets:', error);
       throw error;
     }
+  }
+  // LocalStorage fallback methods for development
+  private addJobToLocalStorage(job: GoogleSheetsJob): Promise<void> {
+    const jobs = this.getJobsFromStorage();
+    const newJob = { ...job, id: crypto.randomUUID() };
+    jobs.push(newJob);
+    localStorage.setItem('zaid-electronics-jobs', JSON.stringify(jobs));
+    return Promise.resolve();
+  }
+
+  private getAllJobsFromLocalStorage(): Promise<GoogleSheetsJob[]> {
+    const jobs = this.getJobsFromStorage();
+    // Return sorted copy without mutating original array
+    const sortedJobs = [...jobs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Remove id field to match GoogleSheetsJob type
+    return Promise.resolve(sortedJobs.map(({ id, ...job }) => job));
+  }
+
+  private updateJobInLocalStorage(id: string, updatedJob: Partial<GoogleSheetsJob>): Promise<void> {
+    const jobs = this.getJobsFromStorage();
+    
+    // Try to find by ID first, fallback to index for backwards compatibility
+    let jobIndex = jobs.findIndex(j => j.id === id);
+    
+    if (jobIndex === -1) {
+      // Fallback: try treating id as array index for backwards compatibility
+      const indexId = parseInt(id);
+      if (!isNaN(indexId) && indexId >= 0 && indexId < jobs.length) {
+        jobIndex = indexId;
+      }
+    }
+    
+    if (jobIndex >= 0 && jobIndex < jobs.length) {
+      jobs[jobIndex] = { ...jobs[jobIndex], ...updatedJob };
+      localStorage.setItem('zaid-electronics-jobs', JSON.stringify(jobs));
+    } else {
+      throw new Error('Job not found');
+    }
+    return Promise.resolve();
+  }
+
+  private deleteJobFromLocalStorage(id: string): Promise<void> {
+    const jobs = this.getJobsFromStorage();
+    
+    // Try to find by ID first, fallback to index for backwards compatibility
+    let jobIndex = jobs.findIndex(j => j.id === id);
+    
+    if (jobIndex === -1) {
+      // Fallback: try treating id as array index for backwards compatibility  
+      const indexId = parseInt(id);
+      if (!isNaN(indexId) && indexId >= 0 && indexId < jobs.length) {
+        jobIndex = indexId;
+      }
+    }
+    
+    if (jobIndex >= 0 && jobIndex < jobs.length) {
+      jobs.splice(jobIndex, 1);
+      localStorage.setItem('zaid-electronics-jobs', JSON.stringify(jobs));
+    } else {
+      throw new Error('Job not found');
+    }
+    return Promise.resolve();
+  }
+
+  private exportLocalStorageToCSV(): Promise<string> {
+    const jobs = this.getJobsFromStorage();
+    const headers = ['Date', 'Customer Name', 'Mobile', 'TV Model', 'Work Done', 'Price', 'Parts Cost', 'Profit'];
+    const csvRows = [headers.join(',')];
+    
+    jobs.forEach(job => {
+      const row = [
+        job.date,
+        `"${job.customerName}"`,
+        job.mobile,
+        `"${job.tvModel}"`,
+        `"${job.workDone}"`,
+        job.price,
+        job.partsCost || 0,
+        job.profit
+      ];
+      csvRows.push(row.join(','));
+    });
+    
+    return Promise.resolve(csvRows.join('\n'));
+  }
+
+  private getJobsFromStorage(): (GoogleSheetsJob & { id: string })[] {
+    const stored = localStorage.getItem('zaid-electronics-jobs');
+    return stored ? JSON.parse(stored) : [];
   }
 }
 
