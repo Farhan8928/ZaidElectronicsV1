@@ -22,8 +22,14 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
   createdAt: true,
   updatedAt: true,
 }).extend({
+  date: z.string().min(1, "Date is required"),
+  customerName: z.string().min(1, "Customer name is required"),
+  mobile: z.string().min(1, "Mobile number is required"),
+  tvModel: z.string().min(1, "TV model is required"),
+  workDone: z.string().min(1, "Work description is required"),
   price: z.coerce.number().min(0, "Price must be greater than 0"),
   partsCost: z.coerce.number().min(0).optional(),
+  profit: z.coerce.number(),
 });
 
 export type InsertJob = z.infer<typeof insertJobSchema>;
