@@ -1,4 +1,4 @@
-import { GoogleSheetsJob } from "@shared/schema";
+import { GoogleSheetsJob } from "@/types/schema";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Edit, Trash2, Receipt, Send } from "lucide-react";

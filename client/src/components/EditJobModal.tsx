@@ -1,5 +1,5 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { GoogleSheetsJob } from "@shared/schema";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { GoogleSheetsJob } from "@/types/schema";
 import { JobForm } from "./JobForm";
 
 interface EditJobModalProps {
@@ -23,6 +23,7 @@ export function EditJobModal({ open, onOpenChange, job, onSubmit, loading }: Edi
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Job</DialogTitle>
+          <DialogDescription className="sr-only">Update job details and save</DialogDescription>
         </DialogHeader>
         
         <JobForm

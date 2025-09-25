@@ -4,6 +4,7 @@ interface MonthlyTrendChartProps {
   data: Array<{
     month: string;
     revenue: number;
+    partsCost: number;
     profit: number;
     jobs: number;
     margin: number;
@@ -45,6 +46,7 @@ export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
               if (name === 'margin') return [`${value}%`, 'Margin'];
               return [`₹${value.toLocaleString()}`, 
                 name === 'revenue' ? 'Revenue' : 
+                name === 'partsCost' ? 'Parts Cost' :
                 name === 'profit' ? 'Profit' : 
                 name === 'jobs' ? 'Jobs' : name
               ];
@@ -52,6 +54,7 @@ export function MonthlyTrendChart({ data }: MonthlyTrendChartProps) {
           />
           <Legend />
           <Bar yAxisId="left" dataKey="revenue" fill="#3b82f6" name="Revenue" radius={[4, 4, 0, 0]} />
+          <Bar yAxisId="left" dataKey="partsCost" fill="#d97706" name="Parts Cost" radius={[4, 4, 0, 0]} />
           <Bar yAxisId="left" dataKey="profit" fill="#10b981" name="Profit" radius={[4, 4, 0, 0]} />
           <Line 
             yAxisId="right" 

@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, ReactNode } from "react";
-import { GoogleSheetsJob, DashboardStats } from "@shared/schema";
+import { GoogleSheetsJob, DashboardStats } from "@/types/schema";
 
 interface JobState {
   jobs: GoogleSheetsJob[];

@@ -380,15 +380,15 @@ export default function Reports() {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Average Margin</CardTitle>
-                    <Target className="h-4 w-4 text-muted-foreground" />
+                    <CardTitle className="text-sm font-medium">Parts Cost</CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-purple-600">
-                      {ReportsUtils.formatPercentage(selectedMonthStats.margin)}
+                    <div className="text-2xl font-bold text-orange-600">
+                      {ReportsUtils.formatCurrency(selectedMonthStats.partsCost)}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Profit share of revenue
+                      {selectedMonthStats.revenue > 0 ? ReportsUtils.formatPercentage((selectedMonthStats.partsCost / selectedMonthStats.revenue) * 100) : "0%"} of revenue
                     </p>
                   </CardContent>
                 </Card>
@@ -421,6 +421,7 @@ export default function Reports() {
               <MonthlyTrendChart data={monthlyStats.map(stat => ({
                 month: ReportsUtils.getMonthName(stat.month),
                 revenue: stat.revenue,
+                partsCost: stat.partsCost,
                 profit: stat.profit,
                 jobs: stat.jobs,
                 margin: stat.margin
@@ -507,15 +508,15 @@ export default function Reports() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Average Margin</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Parts Cost</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-purple-600">
-                  {yearlyStats.length > 0 ? ReportsUtils.formatPercentage(yearlyStats.reduce((sum, stat) => sum + stat.margin, 0) / yearlyStats.length) : "0%"}
+                <div className="text-2xl font-bold text-orange-600">
+                  {ReportsUtils.formatCurrency(yearlyStats.reduce((sum, stat) => sum + stat.partsCost, 0))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Best year: {yearlyStats.length > 0 ? Math.max(...yearlyStats.map(s => s.margin)).toFixed(1) : 0}%
+                  Across {yearlyStats.length} year{yearlyStats.length !== 1 ? 's' : ''}
                 </p>
               </CardContent>
             </Card>

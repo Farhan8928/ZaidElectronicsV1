@@ -8,6 +8,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Download, FileText, Users, Calendar, ExternalLink, RefreshCw } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
+import { ReportsUtils } from "@/lib/reportsUtils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as DateCalendar } from "@/components/ui/calendar";
+import { format as formatDate } from "date-fns";
 
 export default function Export() {
   const [customExport, setCustomExport] = useState({
@@ -27,41 +36,118 @@ export default function Export() {
   });
   const { toast } = useToast();
 
+  const [formatPicker, setFormatPicker] = useState<{
+    open: boolean;
+    type: "all" | "thisMonth" | "customers" | null;
+  }>({ open: false, type: null });
+
   const exportMutation = useMutation({
-    mutationFn: () => googleSheetsService.exportToCSV(),
-    onSuccess: (csvData) => {
-      // Create and download CSV file
-      const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `zaid-electronics-jobs-${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: "Export Successful",
-        description: "Your data has been exported and downloaded.",
-      });
+    mutationFn: async (params: { type: "all" | "thisMonth" | "customers" | "custom"; format: "csv" | "excel" | "pdf" }) => {
+      const jobs = await googleSheetsService.getAllJobs();
+
+      // Select dataset
+      let rows = jobs;
+      if (params.type === "thisMonth") {
+        const now = new Date();
+        const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        rows = jobs.filter(j => j.date.startsWith(monthKey));
+      } else if (params.type === "customers") {
+        // All customer rows (not unique)
+        rows = jobs;
+      }
+
+      // Apply custom date range and column selection when custom
+      if (params.type === "custom") {
+        const from = customExport.fromDate ? new Date(customExport.fromDate) : null;
+        const to = customExport.toDate ? new Date(customExport.toDate) : null;
+        rows = rows.filter(j => {
+          const d = new Date(j.date);
+          const afterFrom = from ? d >= from : true;
+          const beforeTo = to ? d <= to : true;
+          return afterFrom && beforeTo;
+        });
+      }
+
+      // Build columns
+      const columns = Object.entries(customExport.includeColumns)
+        .filter(([, enabled]) => enabled)
+        .map(([key]) => key);
+
+      // Ensure Parts Cost default is included
+      if (!columns.includes("partsCost")) {
+        // no-op; user can uncheck in custom flow; default is checked in state
+      }
+
+      // Prepare data matrix
+      const headers = columns.map(c => c.replace(/([A-Z])/g, ' $1').trim());
+      const data = rows.map(j => columns.map(c => (j as any)[c] ?? ""));
+
+      const today = new Date().toISOString().split('T')[0];
+      const baseName = params.type === "customers"
+        ? `customers-${today}`
+        : params.type === "thisMonth"
+          ? `jobs-${today}-month`
+          : params.type === "custom"
+            ? `jobs-${today}-custom`
+            : `jobs-${today}`;
+
+      // Export by format
+      if (params.format === "csv") {
+        const csvRows = [headers.join(",")].concat(
+          data.map(row => row.map(cell => {
+            const v = String(cell ?? "");
+            return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+          }).join(","))
+        );
+        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `${baseName}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      } else if (params.format === "excel") {
+        const worksheet = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Data");
+        XLSX.writeFile(workbook, `${baseName}.xlsx`);
+      } else if (params.format === "pdf") {
+        const doc = new jsPDF({ orientation: 'landscape' });
+        doc.setFontSize(14);
+        doc.text("Zaid Electronics - Export", 14, 14);
+        autoTable(doc, {
+          head: [headers],
+          body: data,
+          styles: { fontSize: 8 },
+          headStyles: { fillColor: [37, 99, 235] },
+          startY: 18,
+        });
+        doc.save(`${baseName}.pdf`);
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      toast({ title: "Export Successful", description: "Your file has been downloaded." });
     },
     onError: (error: Error) => {
-      toast({
-        title: "Export Failed",
-        description: error.message || "Failed to export data. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: "Export Failed", description: error.message || "Please try again.", variant: "destructive" });
     },
   });
 
-  const handleQuickExport = (type: string) => {
-    exportMutation.mutate();
+  const handleQuickExport = (type: "all" | "thisMonth" | "customers") => {
+    setFormatPicker({ open: true, type });
+  };
+
+  const chooseFormatAndExport = (format: "pdf" | "excel") => {
+    if (!formatPicker.type) return;
+    exportMutation.mutate({ type: formatPicker.type, format });
+    setFormatPicker({ open: false, type: null });
   };
 
   const handleCustomExport = (e: React.FormEvent) => {
     e.preventDefault();
-    exportMutation.mutate();
+    exportMutation.mutate({ type: "custom", format: customExport.format as any });
   };
 
   const openGoogleSheets = () => {
@@ -87,6 +173,7 @@ export default function Export() {
   };
 
   return (
+    <>
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
@@ -108,7 +195,7 @@ export default function Export() {
             >
               <div className="flex items-center space-x-3 w-full">
                 <FileText className="text-green-600 text-xl" />
-                <span className="font-medium">All Data (CSV)</span>
+                <span className="font-medium">All Data</span>
               </div>
               <p className="text-sm text-muted-foreground text-left">Complete job database</p>
             </Button>
@@ -138,7 +225,7 @@ export default function Export() {
                 <Users className="text-purple-600 text-xl" />
                 <span className="font-medium">Customer List</span>
               </div>
-              <p className="text-sm text-muted-foreground text-left">Unique customers only</p>
+              <p className="text-sm text-muted-foreground text-left">All customers (every job row)</p>
             </Button>
           </div>
         </div>
@@ -149,25 +236,49 @@ export default function Export() {
           <form onSubmit={handleCustomExport} className="space-y-4">
             {/* Date Range */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="fromDate">From Date</Label>
-                <Input
-                  id="fromDate"
-                  type="date"
-                  value={customExport.fromDate}
-                  onChange={(e) => setCustomExport(prev => ({ ...prev, fromDate: e.target.value }))}
-                  data-testid="input-from-date"
-                />
+              <div className="flex flex-col gap-2">
+                <Label>From Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customExport.fromDate ? customExport.fromDate : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start">
+                    <DateCalendar
+                      mode="single"
+                      selected={customExport.fromDate ? new Date(customExport.fromDate) : undefined}
+                      onSelect={(d) => {
+                        const val = d ? formatDate(d, 'yyyy-MM-dd') : '';
+                        setCustomExport(prev => ({ ...prev, fromDate: val }));
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div>
-                <Label htmlFor="toDate">To Date</Label>
-                <Input
-                  id="toDate"
-                  type="date"
-                  value={customExport.toDate}
-                  onChange={(e) => setCustomExport(prev => ({ ...prev, toDate: e.target.value }))}
-                  data-testid="input-to-date"
-                />
+              <div className="flex flex-col gap-2">
+                <Label>To Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="justify-start">
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customExport.toDate ? customExport.toDate : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="p-0" align="start">
+                    <DateCalendar
+                      mode="single"
+                      selected={customExport.toDate ? new Date(customExport.toDate) : undefined}
+                      onSelect={(d) => {
+                        const val = d ? formatDate(d, 'yyyy-MM-dd') : '';
+                        setCustomExport(prev => ({ ...prev, toDate: val }));
+                      }}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
@@ -260,5 +371,22 @@ export default function Export() {
         </div>
       </div>
     </div>
+    <Dialog open={formatPicker.open} onOpenChange={(open) => setFormatPicker(prev => ({ ...prev, open }))}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Choose export format</DialogTitle>
+          <DialogDescription>Select PDF or Excel for this export.</DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2 sm:justify-end">
+          <Button variant="outline" onClick={() => chooseFormatAndExport("pdf")}>
+            PDF
+          </Button>
+          <Button onClick={() => chooseFormatAndExport("excel")}>
+            Excel
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </>
   );
 }

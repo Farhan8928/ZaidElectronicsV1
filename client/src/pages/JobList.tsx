@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { googleSheetsService } from "@/lib/googleSheets";
-import { GoogleSheetsJob } from "@shared/schema";
+import { GoogleSheetsJob } from "@/types/schema";
 import { SearchFilters } from "@/components/SearchFilters";
 import { JobTable } from "@/components/JobTable";
 import { VirtualJobTable } from "@/components/VirtualJobTable";

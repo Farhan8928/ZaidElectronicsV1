@@ -1,4 +1,4 @@
-import { GoogleSheetsJob } from "@shared/schema";
+import { GoogleSheetsJob } from "@/types/schema";
 
 export interface DailyStats {
   date: string;

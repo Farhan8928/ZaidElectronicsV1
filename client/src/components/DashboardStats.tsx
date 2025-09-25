@@ -1,5 +1,5 @@
 import { Briefcase, DollarSign, Settings, TrendingUp } from "lucide-react";
-import { DashboardStats as Stats } from "@shared/schema";
+import { DashboardStats as Stats } from "@/types/schema";
 
 interface DashboardStatsProps {
   stats: Stats;

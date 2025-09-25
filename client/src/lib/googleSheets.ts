@@ -1,4 +1,4 @@
-import { GoogleSheetsJob, DashboardStats } from "@shared/schema";
+import { GoogleSheetsJob, DashboardStats } from "@/types/schema";
 
 // Constants
 const USE_LOCAL_STORAGE = false; // Online mode: use Google Apps Script via Express proxy

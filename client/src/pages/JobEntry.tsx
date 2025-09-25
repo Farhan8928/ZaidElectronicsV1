@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { googleSheetsService } from "@/lib/googleSheets";
-import { GoogleSheetsJob } from "@shared/schema";
+import { GoogleSheetsJob } from "@/types/schema";
 import { JobForm } from "@/components/JobForm";
 import { useToast } from "@/hooks/use-toast";
 

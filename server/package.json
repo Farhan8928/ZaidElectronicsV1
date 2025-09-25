@@ -1,0 +1,23 @@
+{
+  "name": "zaidrepairtracker-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^4.21.2",
+    "googleapis": "^160.0.0",
+    "qrcode": "^1.5.4",
+    "venom-bot": "^5.3.0",
+    "whatsapp-web.js": "^1.34.1",
+    "ws": "^8.18.0"
+  }
+}
+
+
+
