@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { googleSheetsService } from "@/lib/googleSheets";
 import { useJobContext } from "@/contexts/JobContext";
 import { DashboardStats } from "@/components/DashboardStats";
 import { MonthlyRevenueChart } from "@/components/charts/MonthlyRevenueChart";
+import { DailyRevenueChart } from "@/components/charts/DailyRevenueChart";
+import { ReportsUtils } from "@/lib/reportsUtils";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, FileText } from "lucide-react";
 import { Link } from "wouter";
@@ -17,14 +19,30 @@ export default function Dashboard() {
     refetchInterval: 300000, // Refresh every 5 minutes
   });
 
-  const { data: recentJobs, isLoading: jobsLoading } = useQuery({
-    queryKey: ['/api/jobs', 'recent'],
-    queryFn: async () => {
-      const allJobs = await googleSheetsService.getAllJobs();
-      return allJobs.slice(0, 5); // Get 5 most recent jobs
-    },
+  const { data: allJobs = [], isLoading: jobsLoading } = useQuery({
+    queryKey: ['/api/jobs'],
+    queryFn: () => googleSheetsService.getAllJobs(),
     refetchInterval: 300000,
   });
+
+  // Calculate chart data
+  const monthlyData = useMemo(() => {
+    const monthlyStats = ReportsUtils.getMonthlyStats(allJobs);
+    return monthlyStats.slice(-6).map(stat => ({
+      month: ReportsUtils.getMonthName(stat.month),
+      revenue: stat.revenue,
+      partsCost: stat.partsCost,
+      profit: stat.profit
+    }));
+  }, [allJobs]);
+
+  const dailyData = useMemo(() => {
+    return ReportsUtils.getDailyStats(allJobs, 7); // Last 7 days
+  }, [allJobs]);
+
+  const recentJobs = useMemo(() => {
+    return allJobs.slice(0, 5); // Get 5 most recent jobs
+  }, [allJobs]);
 
   useEffect(() => {
     if (stats) {
@@ -71,7 +89,13 @@ export default function Dashboard() {
         {/* Monthly Revenue Chart */}
         <div className="bg-card rounded-lg border border-border p-6">
           <h3 className="text-lg font-semibold mb-4">Monthly Revenue Trend</h3>
-          <MonthlyRevenueChart />
+          <MonthlyRevenueChart data={monthlyData} />
+        </div>
+
+        {/* Daily Revenue Chart */}
+        <div className="bg-card rounded-lg border border-border p-6">
+          <h3 className="text-lg font-semibold mb-4">7-Day Revenue & Profit</h3>
+          <DailyRevenueChart data={dailyData} />
         </div>
 
         {/* Recent Jobs */}

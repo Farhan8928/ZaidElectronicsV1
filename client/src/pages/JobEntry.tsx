@@ -18,6 +18,8 @@ export default function JobEntry() {
       // Invalidate and refetch relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
+      // Full refresh to reflect latest state throughout the app
+      window.location.reload();
     },
     onError: (error: Error) => {
       toast({

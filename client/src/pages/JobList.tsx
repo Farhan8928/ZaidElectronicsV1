@@ -1,12 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { googleSheetsService } from "@/lib/googleSheets";
 import { GoogleSheetsJob } from "@shared/schema";
 import { SearchFilters } from "@/components/SearchFilters";
 import { JobTable } from "@/components/JobTable";
+import { VirtualJobTable } from "@/components/VirtualJobTable";
 import { EditJobModal } from "@/components/EditJobModal";
 import { useToast } from "@/hooks/use-toast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 
 export default function JobList() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -16,11 +20,43 @@ export default function JobList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: jobs = [], isLoading, error } = useQuery({
+  // Debounce search query for better performance
+  const debouncedSearchQuery = useDebounce(searchQuery, 300);
+
+  const { data: jobs = [], isLoading, error, refetch } = useQuery({
     queryKey: ['/api/jobs'],
     queryFn: () => googleSheetsService.getAllJobs(),
     refetchInterval: 300000, // Refresh every 5 minutes
   });
+
+  const normalizedJobs = useMemo(() => {
+    const toYmd = (raw: string): string => {
+      try {
+        if (!raw) return '';
+        const str = String(raw).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+        const dmy = str.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+        if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+        if (str.includes('T')) return str.split('T')[0];
+        const d = new Date(str);
+        if (!Number.isNaN(d.getTime())) {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const da = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${da}`;
+        }
+        return str;
+      } catch {
+        return raw;
+      }
+    };
+    return jobs.map(j => {
+      const tv = String((j as any).tvModel ?? '');
+      const isoInTv = tv.match(/^(\d{4}-\d{2}-\d{2})T/);
+      const candidateDate = isoInTv ? isoInTv[1] : String(j.date as unknown as string);
+      return { ...j, date: toYmd(candidateDate) };
+    });
+  }, [jobs]);
 
   const updateJobMutation = useMutation({
     mutationFn: ({ index, job }: { index: number; job: GoogleSheetsJob }) => 
@@ -33,6 +69,7 @@ export default function JobList() {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       setEditingJob(null);
+      window.location.reload();
     },
     onError: (error: Error) => {
       toast({
@@ -53,6 +90,7 @@ export default function JobList() {
       queryClient.invalidateQueries({ queryKey: ['/api/jobs'] });
       queryClient.invalidateQueries({ queryKey: ['/api/stats'] });
       setDeletingIndex(null);
+      window.location.reload();
     },
     onError: (error: Error) => {
       toast({
@@ -65,14 +103,14 @@ export default function JobList() {
   });
 
   const filteredJobs = useMemo(() => {
-    let filtered = jobs;
+    let filtered = normalizedJobs;
 
-    // Search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+    // Search filter with debounced query
+    if (debouncedSearchQuery) {
+      const query = debouncedSearchQuery.toLowerCase();
       filtered = filtered.filter(job =>
         job.customerName.toLowerCase().includes(query) ||
-        job.mobile.includes(query) ||
+        job.mobile.toString().includes(query) ||
         job.tvModel.toLowerCase().includes(query)
       );
     }
@@ -105,7 +143,7 @@ export default function JobList() {
     }
 
     return filtered;
-  }, [jobs, searchQuery, dateFilter]);
+  }, [normalizedJobs, debouncedSearchQuery, dateFilter]);
 
   const handleEdit = (job: GoogleSheetsJob, index: number) => {
     setEditingJob({ job, index });
@@ -173,6 +211,11 @@ Thank you for your business!
     setDateFilter("all");
   };
 
+  const handleRefresh = () => {
+    // Do a full page reload to mimic browser refresh and clear in-memory caches
+    window.location.reload();
+  };
+
   if (error) {
     return (
       <div className="p-6">
@@ -187,7 +230,19 @@ Thank you for your business!
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4" data-testid="title-job-list">Job List</h1>
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-3xl font-bold" data-testid="title-job-list">Job List</h1>
+          <Button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
         
         {/* Search and Filter Bar */}
         <SearchFilters
@@ -209,12 +264,24 @@ Thank you for your business!
           </div>
         </div>
       ) : (
-        <JobTable
-          jobs={filteredJobs}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onGenerateReceipt={handleGenerateReceipt}
-        />
+        // Use virtual scrolling for large datasets (>100 items)
+        filteredJobs.length > 100 ? (
+          <VirtualJobTable
+            jobs={filteredJobs}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onGenerateReceipt={handleGenerateReceipt}
+            containerHeight={600}
+            itemHeight={60}
+          />
+        ) : (
+          <JobTable
+            jobs={filteredJobs}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onGenerateReceipt={handleGenerateReceipt}
+          />
+        )
       )}
 
       {/* Edit Modal */}

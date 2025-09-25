@@ -24,7 +24,7 @@ export const insertJobSchema = createInsertSchema(jobs).omit({
 }).extend({
   date: z.string().min(1, "Date is required"),
   customerName: z.string().min(1, "Customer name is required"),
-  mobile: z.string().min(1, "Mobile number is required"),
+  mobile: z.union([z.string(), z.number()]).transform(val => String(val)).pipe(z.string().min(1, "Mobile number is required")),
   tvModel: z.string().min(1, "TV model is required"),
   workDone: z.string().min(1, "Work description is required"),
   price: z.coerce.number().min(0, "Price must be greater than 0"),
@@ -39,7 +39,7 @@ export type Job = typeof jobs.$inferSelect;
 export interface GoogleSheetsJob {
   date: string;
   customerName: string;
-  mobile: string;
+  mobile: string | number;
   tvModel: string;
   workDone: string;
   price: number;

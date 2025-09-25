@@ -21,7 +21,7 @@ export default function Export() {
       tvModel: true,
       workDone: true,
       price: true,
-      partsCost: false,
+      partsCost: true,
       profit: true,
     }
   });

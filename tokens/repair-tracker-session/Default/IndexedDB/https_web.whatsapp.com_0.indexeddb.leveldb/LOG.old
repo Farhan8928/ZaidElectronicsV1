@@ -1,0 +1,4 @@
+2025/09/24-20:30:36.791 2168 Reusing MANIFEST C:\Users\Rapid Solutions\Downloads\ZaidRepairTracker\tokens\repair-tracker-session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/24-20:30:36.792 2168 Recovering log #320
+2025/09/24-20:30:36.798 2168 Reusing old log C:\Users\Rapid Solutions\Downloads\ZaidRepairTracker\tokens\repair-tracker-session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000320.log 
+2025/09/24-20:30:38.140 3e20 Manual compaction at level-0 from '\x00>\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00?\x00\x00\x00' @ 0 : 0; will stop at (end)

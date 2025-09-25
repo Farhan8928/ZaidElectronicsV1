@@ -18,12 +18,30 @@ interface JobFormProps {
 export function JobForm({ onSubmit, onCancel, loading, initialData }: JobFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Helper function to normalize date for form input
+  const normalizeDateForForm = (dateStr: string): string => {
+    try {
+      // If it's already in YYYY-MM-DD format, return as is
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr;
+      }
+      // If it's a full timestamp, convert to local date
+      const date = new Date(dateStr);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return new Date().toISOString().split('T')[0]; // Fallback to today
+    }
+  };
+
   const form = useForm<GoogleSheetsJob>({
     resolver: zodResolver(insertJobSchema),
     defaultValues: {
-      date: initialData?.date || new Date().toISOString().split('T')[0],
+      date: initialData?.date ? normalizeDateForForm(initialData.date) : new Date().toISOString().split('T')[0],
       customerName: initialData?.customerName || "",
-      mobile: initialData?.mobile || "",
+      mobile: String(initialData?.mobile || ""), // Ensure mobile is always a string
       tvModel: initialData?.tvModel || "",
       workDone: initialData?.workDone || "",
       price: initialData?.price || 0,
@@ -156,15 +174,24 @@ export function JobForm({ onSubmit, onCancel, loading, initialData }: JobFormPro
         </div>
         <div>
           <Label htmlFor="profit">Profit (₹)</Label>
+          {/* Hidden real value to submit */}
           <Input
             id="profit"
             type="number"
             step="0.01"
             placeholder="0.00"
             {...form.register("profit", { valueAsNumber: true })}
-            className="bg-muted text-muted-foreground"
+            className="hidden"
             readOnly
-            data-testid="input-profit"
+            data-testid="input-profit-hidden"
+          />
+          {/* Masked display */}
+          <Input
+            type="text"
+            value={"****"}
+            readOnly
+            className="bg-muted text-muted-foreground"
+            data-testid="input-profit-masked"
           />
           <p className="text-xs text-muted-foreground mt-1">Auto-calculated</p>
         </div>

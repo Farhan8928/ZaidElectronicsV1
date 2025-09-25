@@ -47,11 +47,24 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes instead of Infinity for better UX
+      gcTime: 10 * 60 * 1000, // 10 minutes cache time
+      retry: (failureCount, error) => {
+        // Don't retry on 4xx errors
+        if (error instanceof Error && 'status' in error && typeof error.status === 'number') {
+          if (error.status >= 400 && error.status < 500) {
+            return false;
+          }
+        }
+        return failureCount < 2; // Reduced retry count for faster failure
+      },
+      refetchOnMount: true,
+      refetchOnReconnect: true,
+      networkMode: 'online',
     },
     mutations: {
-      retry: false,
+      retry: 1, // Allow one retry for mutations
+      networkMode: 'online',
     },
   },
 });
