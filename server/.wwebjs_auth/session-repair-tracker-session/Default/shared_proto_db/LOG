@@ -1,4 +1,0 @@
-2025/09/25-19:24:07.120 373c Creating DB C:\Users\Rapid Solutions\Downloads\ZaidRepairTracker\server\.wwebjs_auth\session-repair-tracker-session\Default\shared_proto_db since it was missing.
-2025/09/25-19:24:07.126 373c Reusing MANIFEST C:\Users\Rapid Solutions\Downloads\ZaidRepairTracker\server\.wwebjs_auth\session-repair-tracker-session\Default\shared_proto_db/MANIFEST-000001
-2025/09/25-19:24:07.127 373c Recovering log #3
-2025/09/25-19:24:07.127 373c Reusing old log C:\Users\Rapid Solutions\Downloads\ZaidRepairTracker\server\.wwebjs_auth\session-repair-tracker-session\Default\shared_proto_db/000003.log 

@@ -57,8 +57,8 @@ export function JobTable({ jobs, onEdit, onDelete, onGenerateReceipt }: JobTable
         'Dhobi Ghat, Cheeta Camp, Trombay, Mumbai, Maharashtra 400088',
         '📞 Contact: 8291665919 / 9821473182',
         '',
-        '⭐ Please rate our shop by searching:',
-        '“zaid electronics cheeta camp”'
+        '⭐ Please rate our shop:',
+        'https://g.page/r/CTH7ZpOVa7OPEAE/review'
       ].join('\n');
       const baseUrl = (import.meta as any)?.env?.VITE_BACKEND_URL || '';
       const url = baseUrl ? `${baseUrl}/api/whatsapp/send` : '/api/whatsapp/send';
